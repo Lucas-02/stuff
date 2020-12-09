@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <style>* {
+	margin: 0px;
+	padding: 0px;
+}
+
+.wrapper {
+	width: 100%;
+	height: 100%;
+	position: absolute;
+	background: #6699cc;
+	z-index: -1000;
+	animation: gradient 16s linear infinite;
+	animation-duration: 7s;
+	animation-direction: alternate;
+}
+@keyframes gradient {
+	0% {
+		background-color: silver;
+	}
+	50% {
+		background-color: #6699cc;
+	}
+	100% {
+		background-color: dodgerblue;
+	}
+}
+
+body,
+html {
+	height: 100%;
+	width: 100%;
+	margin: 0;
+	padding: 0;
+
+	background-size: cover;
+}
+
+body {
+	display: grid;
+	grid-template-rows: auto;
+	justify-items: center;
+	align-items: center;
+}
+
+canvas {
+	border: 1px solid dodgerblue;
+	background: black;
+}
+
+button {
+	border-radius: 10px;
+	background: #5e5e5e;
+	padding: 5px;
+	color: white;
+	font-size: 1.5em;
+}
+
+button:hover {
+	background: white;
+	color: #5e5e5e;
+}
+
+h1,
+h4 {
+	font-family: Comic Sans MS;
+}
+
+h1 {
+	position: absolute;
+	border: 0px solid black;
+	width: 100%;
+	top: 30%;
+	text-align: center;
+	color: red;
+}
+
+h4 {
+	position: absolute;
+	border: 0px solid black;
+	width: 100%;
+	top: 40%;
+	text-align: center;
+	justify-content: center;
+	color: red;
+}
+</style>
+    </head>
+    <body>
+
+    <div class="wrapper"></div>
+
+<canvas id="game" width="640" height="480"></canvas>
+
+<h1 id="obj"> Objectives:</h1>
+
+<h4 id="ins">
+	Use your arrow keys to move your paddle up or down on the canvas.
+	<br>Try to avoid getting hit by the ball.
+	<br>The ball turns up randomly and moves randomly, so its hard to avoid it.
+	<br>If you get hit, well, you'll find out what happens next.
+</h4>
+
+<button onclick="MyFunction()">START</button>
+    
+    
+    <script>
+    var canvas = document.getElementById("game");
+var ctx = canvas.getContext("2d");
+function paddle(x, y, width, height) {
+	this.x = x;
+	this.y = y;
+	this.width = width;
+	this.height = height;
+	this.speedModifier = 0;
+	this.hasCollidedWith = function (ball) {
+		var paddleLeftWall = this.x;
+		var paddleRightWall = this.x + this.width;
+		var paddleTopWall = this.y;
+		var paddleBottomWall = this.y + this.height;
+		if (
+			ball.x > paddleLeftWall &&
+			ball.x < paddleRightWall &&
+			ball.y > paddleTopWall &&
+			ball.y < paddleBottomWall
+		) {
+			return true;
+		}
+		return false;
+	};
+	this.move = function (keyCode) {
+		var nextY = this.y;
+		if (keyCode == 40) {
+			nextY += 5;
+			this.speedModifer = 1.5;
+		} else if (keyCode == 38) {
+			nextY += -5;
+			this.speedModifier = 1.5;
+		} else {
+			this.speedModifier = 0;
+		}
+		nextY = nextY < 0 ? 0 : nextY;
+		nextY = nextY + this.height > 480 ? 480 - this.height : nextY;
+		this.y = nextY;
+	};
+}
+var player = new paddle(5, 200, 25, 100);
+
+var ball = {
+	x: 320,
+	y: 240,
+	radius: 10,
+	xSpeed: -2,
+	ySpeed: 0,
+	reverseX: function () {
+		this.xSpeed *= -1;
+	},
+	reverseY: function () {
+		this.ySpeed *= -1;
+	},
+	reset: function () {
+		this.x = Math.random() * 750;
+		this.y = Math.random() * 240;
+		this.xSpeed = -2;
+		this.ySpeed = Math.random() * 10;
+	},
+	isBouncing: function () {
+		return ball.ySpeed != 0;
+	},
+	modifyXSpeedBy: function (modification) {
+		modification = this.xSpeed < 0 ? modification * -1 : modification;
+		var nextValue = this.xSpeed + modification;
+		nextValue = Math.abs(nextValue) > 9 ? 9 : nextValue;
+		this.xSpeed = nextValue;
+	},
+	modifyYSpeedBy: function (modification) {
+		modification = this.ySpeed < 0 ? modification * -1 : modification;
+		this.ySpeed += modification;
+	}
+};
+
+function tick() {
+	updateGame();
+	draw();
+	window.setTimeout("tick()", 1000 / 60);
+}
+function updateGame() {
+	ball.x += ball.xSpeed;
+	ball.y += ball.ySpeed;
+	if (ball.x < 0 || ball.x > 640) {
+		ball.reset();
+	}
+	if (ball.y <= 0 || ball.y >= 480) {
+		ball.reverseY();
+	}
+	var collidedWithPlayer = player.hasCollidedWith(ball);
+
+	if (collidedWithPlayer) {
+		ctx.font = "30px Comic Sans MS";
+		ctx.fillStyle = "red";
+		ctx.textAlign = "center";
+		ctx.fillText("Game Over!", canvas.width / 2, canvas.height / 2);
+		ctx.font = "15px Comic Sans MS";
+		ctx.fillText("Reload to play again.", canvas.width / 2, canvas.height / 1.8);
+		world.stop();
+	}
+	for (var keyCode in heldDown) {
+		player.move(keyCode);
+	}
+}
+function draw() {
+	ctx.fillStyle = "black";
+	ctx.fillRect(0, 0, 640, 480);
+	renderPaddle(player);
+	renderBall(ball);
+}
+function renderPaddle(paddle) {
+	ctx.fillStyle = "white";
+	ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+}
+function renderBall(ball) {
+	ctx.beginPath();
+	ctx.arc(ball.x, ball.y, ball.radius, 0, 2 * Math.PI, false);
+	ctx.fillStyle = "white";
+	ctx.fill();
+}
+
+var heldDown = {};
+window.addEventListener(
+	"keydown",
+	function (keyInfo) {
+		heldDown[event.keyCode] = true;
+	},
+	false
+);
+window.addEventListener(
+	"keyup",
+	function (keyInfo) {
+		delete heldDown[event.keyCode];
+	},
+	false
+);
+
+function MyFunction() {
+	tick();
+	$("#obj, #ins").remove();
+}
+
+    </script>
+    
+    </body>
+</html>
